@@ -281,7 +281,7 @@ const MESES_L = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agost
 const DEFAULT_CFG = {
   socioA:"Socio A", socioB:"Socio B",
   rentPre:2863065.46, rentPost:3009081.79, ipc:5.10, admin:530000, inicio:"2026-03",
-  apiKey: "", binId: ""
+  apiKey: "$2a$10$0qq4RQc/o./Km0Q/NatdV.4nG/IIY23Z7tdC8sASFK9SzuS5fvmay", binId: "6a84dc1dda38895dfef4a700"
 };
 const CAT_GASTO = ["Administración","Predial","Mantenimiento","Servicios","Reparaciones","Impuestos","Otros"];
 const CAT_INGRESO = ["Arriendo","Otros"];
@@ -301,6 +301,10 @@ function load(){
       s.cfg = Object.assign({}, DEFAULT_CFG, s.cfg||{});
       s.movs = s.movs||[];
     }
+    
+    // Asegurar que las llaves nunca queden vacías si están configuradas por defecto
+    if(!s.cfg.apiKey) s.cfg.apiKey = DEFAULT_CFG.apiKey;
+    if(!s.cfg.binId) s.cfg.binId = DEFAULT_CFG.binId;
     
     // Leer credenciales de la URL si están presentes
     const params = new URLSearchParams(window.location.search);
