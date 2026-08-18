@@ -123,27 +123,41 @@
 </head>
 <body>
 <div class="app">
-  <header>
-    <h1>Cuentas del Apartamento</h1>
-    <div class="sub" id="hdrSub">—</div>
+  <header style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+      <h1>Cuentas del Apartamento</h1>
+      <div class="sub" id="hdrSub">—</div>
+    </div>
+    <button id="reloadAppBtn" style="background:var(--card2); border:1px solid var(--line); color:var(--txt); padding:8px 12px; border-radius:10px; font-size:12px; font-weight:600; cursor:pointer;" onclick="window.location.reload(true);">
+      🔄 Actualizar
+    </button>
   </header>
 
   <main>
     <!-- RESUMEN -->
     <section class="view active" id="v-resumen">
-      <div class="card hero">
-        <div class="lbl">Utilidad neta del apartamento</div>
-        <div class="big" id="utilNeta">$0</div>
-        <div class="split" id="utilSplit">A cada socio le corresponde $0</div>
-      </div>
-      <div class="card" style="margin-top:14px;">
+      <div class="card">
         <h2>Fondo común (caja)</h2>
         <div class="mini" style="margin-bottom:12px;"><div class="lbl">Saldo actual en caja</div><div class="val" id="caja">$0</div></div>
         <div class="socioGrid" id="socioResumen"></div>
       </div>
-      <div class="row2">
-        <div class="mini"><div class="lbl">Ingresos</div><div class="val pos" id="totIng">$0</div></div>
-        <div class="mini"><div class="lbl">Gastos</div><div class="val neg" id="totGas">$0</div></div>
+
+      <!-- Botón para mostrar/ocultar detalles -->
+      <button class="btn sec" id="toggleDetailsBtn" style="margin-bottom: 14px; font-size: 13.5px; padding: 10px 14px;">
+        👁️ Ver detalles de utilidad
+      </button>
+
+      <!-- Contenedor de detalles colapsable -->
+      <div id="detailsContainer" style="display: none; animation: fade .18s ease;">
+        <div class="card hero">
+          <div class="lbl">Utilidad neta del apartamento</div>
+          <div class="big" id="utilNeta">$0</div>
+          <div class="split" id="utilSplit">A cada socio le corresponde $0</div>
+        </div>
+        <div class="row2" style="margin-bottom: 14px;">
+          <div class="mini"><div class="lbl">Ingresos</div><div class="val pos" id="totIng">$0</div></div>
+          <div class="mini"><div class="lbl">Gastos</div><div class="val neg" id="totGas">$0</div></div>
+        </div>
       </div>
     </section>
 
@@ -589,6 +603,17 @@ function init(fresh){
   fillCfg();
   renderAll();
   showView("resumen");
+
+  // Event listener para mostrar/ocultar utilidad
+  const toggleBtn = document.getElementById("toggleDetailsBtn");
+  const detailsCont = document.getElementById("detailsContainer");
+  if(toggleBtn && detailsCont) {
+    toggleBtn.addEventListener("click", () => {
+      const isHidden = detailsCont.style.display === "none";
+      detailsCont.style.display = isHidden ? "block" : "none";
+      toggleBtn.textContent = isHidden ? "🙈 Ocultar detalles" : "👁️ Ver detalles de utilidad";
+    });
+  }
 }
 init();
 </script>
