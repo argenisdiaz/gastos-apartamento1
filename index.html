@@ -426,8 +426,14 @@ function calc(){
   for(const m of state.movs){
     if(m.tipo==="ingreso") ing+=m.monto;
     else if(m.tipo==="gasto") gas+=m.monto;
-    else if(m.tipo==="aporte"){ if(m.socio==="B") apoB+=m.monto; else apoA+=m.monto; }
-    else if(m.tipo==="retiro"){ if(m.socio==="B") retB+=m.monto; else retA+=m.monto; }
+    else if(m.tipo==="aporte"){ 
+      if(m.socio==="B" || m.socio===state.cfg.socioB) apoB+=m.monto; 
+      else apoA+=m.monto; 
+    }
+    else if(m.tipo==="retiro"){ 
+      if(m.socio==="B" || m.socio===state.cfg.socioB) retB+=m.monto; 
+      else retA+=m.monto; 
+    }
   }
   const util = ing - gas;
   const caja = ing - gas + (apoA+apoB) - (retA+retB);
