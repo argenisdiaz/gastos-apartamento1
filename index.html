@@ -48,11 +48,6 @@
   .mini .val{font-size:17px; font-weight:700;}
   .pos{color:var(--green);} .neg{color:var(--red);}
 
-  .settle{border-radius:14px; padding:14px; margin-top:2px; font-weight:600; text-align:center; border:1px solid var(--line);}
-  .settle.owe{background:rgba(245,183,78,.12); color:var(--amber); border-color:rgba(245,183,78,.35);}
-  .settle.ok{background:rgba(62,207,142,.12); color:var(--green); border-color:rgba(62,207,142,.35);}
-  .settle .amt{font-size:22px; font-weight:800; display:block; margin-top:3px;}
-
   .socioGrid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
   .socioCard{background:var(--card2); border:1px solid var(--line); border-radius:14px; padding:12px;}
   .socioCard .nm{font-weight:700; font-size:15px; margin-bottom:8px; display:flex; align-items:center; gap:7px;}
@@ -128,7 +123,7 @@
       <h1>Cuentas del Apartamento</h1>
       <div class="sub" id="hdrSub">—</div>
     </div>
-    <button id="reloadAppBtn" style="background:var(--card2); border:1px solid var(--line); color:var(--txt); padding:8px 12px; border-radius:10px; font-size:12px; font-weight:600; cursor:pointer;" onclick="window.location.reload(true);">
+    <button id="reloadAppBtn" style="background:var(--card2); border:1px solid var(--line); color:var(--txt); padding:8px 12px; border-radius:10px; font-size:12px; font-weight:600; cursor:pointer;">
       🔄 Actualizar
     </button>
   </header>
@@ -189,6 +184,17 @@
 
     <!-- AJUSTES -->
     <section class="view" id="v-ajustes">
+      <div class="card">
+        <h2>Nube (Sincronización online)</h2>
+        <div class="note">Ingresa tus credenciales de JSONBin.io para compartir datos entre dispositivos.</div>
+        <label>JSONBin Master Key (API Key)</label>
+        <input id="cfgApiKey" type="password" placeholder="Tu Key de JSONBin...">
+        <label>Bin ID (ID de Bóveda)</label>
+        <input id="cfgBinId" type="text" placeholder="ID de la Bóveda...">
+        <div class="btnRow" style="margin-top: 10px;">
+          <button class="btn" id="btnTestCloud">Conectar y Sincronizar</button>
+        </div>
+      </div>
       <div class="card">
         <h2>Socios</h2>
         <label>Nombre Socio A</label><input id="cfgA" type="text">
@@ -274,7 +280,8 @@ const MESES_L = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agost
 
 const DEFAULT_CFG = {
   socioA:"Socio A", socioB:"Socio B",
-  rentPre:2863065.46, rentPost:3009081.79, ipc:5.10, admin:530000, inicio:"2026-03"
+  rentPre:2863065.46, rentPost:3009081.79, ipc:5.10, admin:530000, inicio:"2026-03",
+  apiKey: "", binId: ""
 };
 const CAT_GASTO = ["Administración","Predial","Mantenimiento","Servicios","Reparaciones","Impuestos","Otros"];
 const CAT_INGRESO = ["Arriendo","Otros"];
@@ -292,7 +299,65 @@ function load(){
   const s = { cfg:Object.assign({},DEFAULT_CFG), movs:[], seededPredial:false };
   return s;
 }
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ toast("No se pudo guardar 😕"); } }
+
+// Guarda en local y además gatilla la sincronización si hay internet y credenciales
+async function save(){
+  try{
+    localStorage.setItem(KEY, JSON.stringify(state));
+    await saveToCloud();
+  }catch(e){
+    toast("No se pudo guardar localmente 😕");
+  }
+}
+
+// Sube los datos (movimientos y configuraciones) a la nube
+async function saveToCloud() {
+  const c = state.cfg;
+  if (!c.apiKey || !c.binId) return; // No hay credenciales configuradas
+  try {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${c.binId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Master-Key": c.apiKey
+      },
+      body: JSON.stringify({
+        movs: state.movs.filter(m => !m.auto), // No subimos los automáticos para no inflar el archivo
+        cfg: c,
+        seededPredial: state.seededPredial
+      })
+    });
+    if(!res.ok) throw new Error();
+  } catch(e) {
+    toast("Guardado localmente. Error al sincronizar con la nube ☁️");
+  }
+}
+
+// Carga los datos desde la nube
+async function loadFromCloud() {
+  const c = state.cfg;
+  if (!c.apiKey || !c.binId) return false;
+  try {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${c.binId}/latest`, {
+      method: "GET",
+      headers: {
+        "X-Master-Key": c.apiKey
+      }
+    });
+    if(!res.ok) throw new Error();
+    const data = await res.json();
+    if(data && data.record) {
+      state.movs = data.record.movs || [];
+      state.cfg = Object.assign({}, DEFAULT_CFG, data.record.cfg || {});
+      state.seededPredial = data.record.seededPredial || false;
+      localStorage.setItem(KEY, JSON.stringify(state));
+      return true;
+    }
+  } catch(e) {
+    toast("No se pudo descargar datos de la nube. Usando local 🔌");
+  }
+  return false;
+}
 
 function uid(){ return "m"+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function ym(fecha){ return fecha.slice(0,7); }
@@ -370,6 +435,7 @@ function renderAll(){
   document.getElementById("totIng").textContent = fmt(c.ing);
   document.getElementById("totGas").textContent = fmt(c.gas);
   document.getElementById("caja").textContent = fmt(c.caja);
+
   // socio cards (resumen + detalle)
   const cardHtml = (s,eq,apo,ret)=>{
     const col = s==="A" ? "var(--accent)" : "var(--violet)";
@@ -479,7 +545,7 @@ function parseMonto(str){
   str=String(str).trim().replace(/\s/g,"").replace(/\./g,"").replace(",",".").replace(/[^0-9.]/g,"");
   return parseFloat(str);
 }
-document.getElementById("mSave").addEventListener("click",()=>{
+document.getElementById("mSave").addEventListener("click",async ()=>{
   const monto=parseMonto(document.getElementById("mMonto").value);
   if(isNaN(monto)||monto<=0){ toast("Ingresa un monto válido"); return; }
   const fecha=document.getElementById("mFecha").value || new Date().toISOString().slice(0,10);
@@ -491,13 +557,13 @@ document.getElementById("mSave").addEventListener("click",()=>{
     const i=state.movs.findIndex(m=>m.id===editId);
     if(i>=0){ obj.id=editId; state.movs[i]=obj; }
   }else{ obj.id=uid(); state.movs.push(obj); }
-  save(); closeModal(); renderAll(); toast("Guardado ✓");
+  await save(); closeModal(); renderAll(); toast("Guardado ✓");
 });
-document.getElementById("mDelete").addEventListener("click",()=>{
+document.getElementById("mDelete").addEventListener("click",async ()=>{
   if(!editId) return;
   if(confirm("¿Eliminar este movimiento?")){
     state.movs=state.movs.filter(m=>m.id!==editId);
-    save(); closeModal(); renderAll(); toast("Eliminado");
+    await save(); closeModal(); renderAll(); toast("Eliminado");
   }
 });
 document.getElementById("mCancel").addEventListener("click",closeModal);
@@ -532,8 +598,10 @@ function fillCfg(){
   document.getElementById("cfgIpc").value=String(c.ipc).replace(".",",");
   document.getElementById("cfgAdmin").value=money2.format(c.admin);
   document.getElementById("cfgInicio").value=c.inicio;
+  document.getElementById("cfgApiKey").value=c.apiKey || "";
+  document.getElementById("cfgBinId").value=c.binId || "";
 }
-document.getElementById("saveCfg").addEventListener("click",()=>{
+document.getElementById("saveCfg").addEventListener("click",async ()=>{
   const c=state.cfg;
   c.socioA=document.getElementById("cfgA").value.trim()||"Socio A";
   c.socioB=document.getElementById("cfgB").value.trim()||"Socio B";
@@ -542,7 +610,30 @@ document.getElementById("saveCfg").addEventListener("click",()=>{
   const ip=parseMonto(document.getElementById("cfgIpc").value); if(!isNaN(ip)) c.ipc=ip;
   const ad=parseMonto(document.getElementById("cfgAdmin").value); if(!isNaN(ad)) c.admin=round2(ad);
   const ini=document.getElementById("cfgInicio").value.trim(); if(/^\d{4}-\d{2}$/.test(ini)) c.inicio=ini;
-  regenAuto(); save(); renderAll(); fillCfg(); toast("Ajustes guardados ✓");
+  c.apiKey=document.getElementById("cfgApiKey").value.trim();
+  c.binId=document.getElementById("cfgBinId").value.trim();
+  regenAuto(); await save(); renderAll(); fillCfg(); toast("Ajustes guardados ✓");
+});
+
+document.getElementById("btnTestCloud").addEventListener("click", async () => {
+  const apiKey = document.getElementById("cfgApiKey").value.trim();
+  const binId = document.getElementById("cfgBinId").value.trim();
+  if(!apiKey || !binId) { toast("Ingresa Key e ID de Bóveda"); return; }
+  state.cfg.apiKey = apiKey;
+  state.cfg.binId = binId;
+  toast("Conectando con la nube...");
+  const success = await loadFromCloud();
+  if(success) {
+    regenAuto();
+    renderAll();
+    fillCfg();
+    toast("¡Conectado y datos descargados! ☁️✓");
+  } else {
+    // Si falla descargando, intentamos subir los datos locales como inicialización
+    toast("Inicializando datos locales en la nube...");
+    await saveToCloud();
+    toast("¡Datos sincronizados por primera vez! ☁️✓");
+  }
 });
 
 /* ---- Export / Import ---- */
@@ -567,24 +658,24 @@ document.getElementById("expCsv").addEventListener("click",()=>{
   toast("CSV exportado ✓");
 });
 document.getElementById("impJson").addEventListener("click",()=>document.getElementById("fileImp").click());
-document.getElementById("fileImp").addEventListener("change",e=>{
+document.getElementById("fileImp").addEventListener("change",async e=>{
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader();
-  r.onload=()=>{
+  r.onload=async ()=>{
     try{
       const s=JSON.parse(r.result);
       if(!s.movs) throw 0;
       s.cfg=Object.assign({},DEFAULT_CFG,s.cfg||{});
-      state=s; save(); regenAuto(); save(); fillCfg(); renderAll(); toast("Respaldo importado ✓");
+      state=s; await save(); regenAuto(); await save(); fillCfg(); renderAll(); toast("Respaldo importado y sincronizado ✓");
     }catch(err){ toast("Archivo no válido"); }
   };
   r.readAsText(f);
   e.target.value="";
 });
-document.getElementById("resetAll").addEventListener("click",()=>{
-  if(confirm("Esto borra TODOS los movimientos y ajustes. ¿Continuar?")){
+document.getElementById("resetAll").addEventListener("click",async ()=>{
+  if(confirm("Esto borra TODOS los movimientos y ajustes locales y en la nube. ¿Continuar?")){
     localStorage.removeItem(KEY);
-    state=load(); init(true); toast("Todo reiniciado");
+    state=load(); await init(true); toast("Todo reiniciado");
   }
 });
 
@@ -596,10 +687,11 @@ function toast(msg){
 }
 
 /* ---- Init ---- */
-function init(fresh){
+async function init(fresh){
   seedPredial();
+  // Intentar cargar primero los últimos datos guardados en la nube
+  await loadFromCloud();
   regenAuto();
-  save();
   fillCfg();
   renderAll();
   showView("resumen");
@@ -612,6 +704,23 @@ function init(fresh){
       const isHidden = detailsCont.style.display === "none";
       detailsCont.style.display = isHidden ? "block" : "none";
       toggleBtn.textContent = isHidden ? "🙈 Ocultar detalles" : "👁️ Ver detalles de utilidad";
+    });
+  }
+
+  // Event listener para refrescar
+  const reloadBtn = document.getElementById("reloadAppBtn");
+  if(reloadBtn) {
+    reloadBtn.addEventListener("click", async () => {
+      toast("Actualizando datos...");
+      const updated = await loadFromCloud();
+      if(updated) {
+        regenAuto();
+        renderAll();
+        fillCfg();
+        toast("Datos actualizados desde la nube ☁️✓");
+      } else {
+        window.location.reload(true);
+      }
     });
   }
 }
