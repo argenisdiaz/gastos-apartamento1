@@ -136,19 +136,14 @@
         <div class="big" id="utilNeta">$0</div>
         <div class="split" id="utilSplit">A cada socio le corresponde $0</div>
       </div>
-      <div class="row2">
-        <div class="mini"><div class="lbl">Ingresos</div><div class="val pos" id="totIng">$0</div></div>
-        <div class="mini"><div class="lbl">Gastos</div><div class="val neg" id="totGas">$0</div></div>
-      </div>
       <div class="card" style="margin-top:14px;">
-        <h2>Liquidación entre socios</h2>
-        <div id="settleBox"></div>
-        <div class="note">Considera aportes y retiros de cada socio. La utilidad se reparte 50/50, así que solo cambia el saldo entre ustedes.</div>
-      </div>
-      <div class="card">
         <h2>Fondo común (caja)</h2>
         <div class="mini" style="margin-bottom:12px;"><div class="lbl">Saldo actual en caja</div><div class="val" id="caja">$0</div></div>
         <div class="socioGrid" id="socioResumen"></div>
+      </div>
+      <div class="row2">
+        <div class="mini"><div class="lbl">Ingresos</div><div class="val pos" id="totIng">$0</div></div>
+        <div class="mini"><div class="lbl">Gastos</div><div class="val neg" id="totGas">$0</div></div>
       </div>
     </section>
 
@@ -361,15 +356,6 @@ function renderAll(){
   document.getElementById("totIng").textContent = fmt(c.ing);
   document.getElementById("totGas").textContent = fmt(c.gas);
   document.getElementById("caja").textContent = fmt(c.caja);
-  // settle
-  const sb=document.getElementById("settleBox");
-  if(c.settle < 0.5){
-    sb.innerHTML = `<div class="settle ok">✓ Cuentas al día entre socios</div>`;
-  }else{
-    const deudor = c.diff>0 ? nombre("B") : nombre("A");
-    const acreedor = c.diff>0 ? nombre("A") : nombre("B");
-    sb.innerHTML = `<div class="settle owe">${deudor} le debe a ${acreedor}<span class="amt">${fmt(c.settle)}</span></div>`;
-  }
   // socio cards (resumen + detalle)
   const cardHtml = (s,eq,apo,ret)=>{
     const col = s==="A" ? "var(--accent)" : "var(--violet)";
