@@ -303,9 +303,9 @@ function load(){
       s.movs = s.movs||[];
     }
     
-    // Asegurar que las llaves nunca queden vacías si están configuradas por defecto
-    if(!s.cfg.apiKey) s.cfg.apiKey = DEFAULT_CFG.apiKey;
-    if(!s.cfg.binId) s.cfg.binId = DEFAULT_CFG.binId;
+    // Forzar el uso estricto de las credenciales de fábrica definidas en DEFAULT_CFG
+    s.cfg.apiKey = DEFAULT_CFG.apiKey;
+    s.cfg.binId = DEFAULT_CFG.binId;
     
     // Leer credenciales de la URL si están presentes
     const params = new URLSearchParams(window.location.search);
