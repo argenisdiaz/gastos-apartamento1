@@ -294,7 +294,22 @@ let curFilter = "todos";
 function load(){
   try{
     const raw = localStorage.getItem(KEY);
-    if(raw){ const s = JSON.parse(raw); s.cfg = Object.assign({}, DEFAULT_CFG, s.cfg||{}); s.movs = s.movs||[]; return s; }
+    let s = raw ? JSON.parse(raw) : null;
+    if(!s) {
+      s = { cfg:Object.assign({},DEFAULT_CFG), movs:[], seededPredial:false };
+    } else {
+      s.cfg = Object.assign({}, DEFAULT_CFG, s.cfg||{});
+      s.movs = s.movs||[];
+    }
+    
+    // Leer credenciales de la URL si están presentes
+    const params = new URLSearchParams(window.location.search);
+    const urlKey = params.get("key");
+    const urlBin = params.get("bin");
+    if(urlKey) s.cfg.apiKey = urlKey;
+    if(urlBin) s.cfg.binId = urlBin;
+    
+    return s;
   }catch(e){}
   const s = { cfg:Object.assign({},DEFAULT_CFG), movs:[], seededPredial:false };
   return s;
